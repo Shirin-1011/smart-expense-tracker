@@ -25,9 +25,15 @@ import {
   XCircle,
 } from "lucide-react";
 
-const BOT_NUMBER = process.env.NEXT_PUBLIC_TWILIO_WHATSAPP_NUMBER?.replace("whatsapp:", "") || "+1 415 523 8886";
+const BOT_NUMBER =
+  process.env.NEXT_PUBLIC_TWILIO_WHATSAPP_NUMBER?.replace("whatsapp:", "") ||
+  "+1 415 523 8886";
 const TWILIO_SANDBOX_JOIN_CODE =
-  process.env.NEXT_PUBLIC_TWILIO_SANDBOX_JOIN_CODE || "join indicate-twelve";
+  process.env.NEXT_PUBLIC_TWILIO_SANDBOX_JOIN_CODE || "join indicative-twelve";
+const WHATSAPP_SANDBOX_LINK = buildWhatsAppSandboxLink(
+  BOT_NUMBER,
+  TWILIO_SANDBOX_JOIN_CODE
+);
 
 export default function SettingsPage() {
   const { data: currentUser, isLoading: isUserLoading } = useConvexQuery(
@@ -173,7 +179,8 @@ export default function SettingsPage() {
                 <h2 className="font-semibold">Twilio Sandbox Setup</h2>
                 <p className="text-sm text-muted-foreground">
                   Each tester must join the Twilio WhatsApp Sandbox before the
-                  bot can reply to them.
+                  bot can reply to them. If replies stop after inactivity,
+                  reconnect by sending the join phrase again.
                 </p>
               </div>
               <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 text-sm">
@@ -193,6 +200,16 @@ export default function SettingsPage() {
                   After Twilio confirms the sandbox join, send "help" to start
                   using Splitr from WhatsApp.
                 </p>
+                <Button asChild className="w-fit">
+                  <a
+                    href={WHATSAPP_SANDBOX_LINK}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Reconnect WhatsApp Sandbox
+                  </a>
+                </Button>
               </div>
             </section>
           )}
@@ -247,5 +264,11 @@ function normalizePhone(phone) {
 
 function isValidPhone(phone) {
   return phone.startsWith("+") && phone.replace(/\D/g, "").length >= 10;
+}
+
+function buildWhatsAppSandboxLink(botNumber, joinMessage) {
+  const digits = botNumber.replace(/\D/g, "");
+
+  return `https://wa.me/${digits}?text=${encodeURIComponent(joinMessage)}`;
 }
 
