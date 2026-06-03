@@ -7,6 +7,11 @@ import {
   generateGeminiVisionText,
   generateGroqText,
 } from "./aiProviders.js";
+import {
+  annotateArithmeticExpressions,
+  normalizeExpenseDescription,
+  normalizePossiblyExpressionNumber,
+} from "./expenseParsing.js";
 
 const ALLOWED_CATEGORY_IDS = [
   "foodDrink",
@@ -350,6 +355,7 @@ function buildGroupContext(group) {
 }
 
 function buildExpensePrompt({ input, currentUser, participants, group }) {
+  const annotatedInput = annotateArithmeticExpressions(input);
   const participantLines = participants
     .map(
       (participant) =>
@@ -385,6 +391,8 @@ Rules:
 - If participants are ambiguous, include the current user and every participant you can match exactly.
 - If the input says "everyone", "all", or similar and a group is selected, use all group members.
 - If a person is mentioned but cannot be matched exactly to the participant list, omit them and add a warning.
+- Evaluate arithmetic expressions exactly using normal precedence and parentheses. Use the evaluated values in amount, exactAmounts, or percentages.
+- Keep description as the clean expense title only, such as "electric bill" or "pizza". Omit payer names, amounts, split instructions, exclusions, calculations, and participant instructions from description.
 - categoryId must be one of the allowed category IDs.
 - splitType must be "equal", "percentage", or "exact". Default to "equal" if unclear.
 - For percentage splits, percentages must total 100.
@@ -408,7 +416,7 @@ Return this JSON shape:
 }
 
 Natural-language input:
-${input}
+${annotatedInput}
   `.trim();
 }
 
@@ -769,15 +777,11 @@ function normalizeExpensePayload({
 }
 
 function normalizeDescription(description) {
-  if (typeof description !== "string") {
-    return "";
-  }
-
-  return description.trim().slice(0, 160);
+  return normalizeExpenseDescription(description);
 }
 
 function normalizeAmount(amount) {
-  const number = Number(amount);
+  const number = normalizePossiblyExpressionNumber(amount);
 
   if (!Number.isFinite(number) || number <= 0) {
     return null;
@@ -1030,7 +1034,7 @@ function buildPercentageSplits({
 
   for (const entry of percentages) {
     const userId = entry?.userId;
-    const percentage = Number(entry?.percentage);
+    const percentage = normalizePossiblyExpressionNumber(entry?.percentage);
 
     if (
       typeof userId !== "string" ||
@@ -1091,7 +1095,7 @@ function buildExactSplits({
 
   for (const entry of exactAmounts) {
     const userId = entry?.userId;
-    const exactAmount = Number(entry?.amount);
+    const exactAmount = normalizePossiblyExpressionNumber(entry?.amount);
 
     if (
       typeof userId !== "string" ||

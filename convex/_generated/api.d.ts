@@ -21,6 +21,7 @@ import type * as chat from "../chat.js";
 import type * as contacts from "../contacts.js";
 import type * as dashboard from "../dashboard.js";
 import type * as email from "../email.js";
+import type * as expenseParsing from "../expenseParsing.js";
 import type * as expenses from "../expenses.js";
 import type * as groups from "../groups.js";
 import type * as inngest from "../inngest.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   contacts: typeof contacts;
   dashboard: typeof dashboard;
   email: typeof email;
+  expenseParsing: typeof expenseParsing;
   expenses: typeof expenses;
   groups: typeof groups;
   inngest: typeof inngest;

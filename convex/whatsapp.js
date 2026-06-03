@@ -4,6 +4,11 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { generateGroqText } from "./aiProviders.js";
+import {
+  annotateArithmeticExpressions,
+  normalizeExpenseDescription,
+  normalizePossiblyExpressionNumber,
+} from "./expenseParsing.js";
 
 const ALLOWED_CATEGORY_IDS = [
   "foodDrink",
@@ -454,6 +459,8 @@ function formatRecentExpensesReply(expenses) {
 }
 
 function buildExpensePrompt(context, messageBody) {
+  const annotatedMessage = annotateArithmeticExpressions(messageBody);
+
   return `
 Parse this WhatsApp message into a Splitr expense.
 
@@ -480,6 +487,8 @@ Rules:
 - If payer is ambiguous, use the current user.
 - If a group is selected, use all group members.
 - If participants are ambiguous and no group exists, use only the current user.
+- Evaluate arithmetic expressions exactly using normal precedence and parentheses. Use the evaluated values in amount.
+- Keep description as the clean expense title only, such as "electric bill" or "pizza". Omit payer names, amounts, split instructions, exclusions, calculations, and participant instructions from description.
 - categoryId must be one of the allowed category IDs.
 - splitType must be "equal", "percentage", or "exact"; default to "equal".
 - confidence must be 0 to 1.
@@ -498,7 +507,7 @@ Return:
 }
 
 Message:
-${messageBody}
+${annotatedMessage}
   `.trim();
 }
 
@@ -520,9 +529,8 @@ function normalizeParsedExpense(parsed, context) {
   const participantMap = new Map(
     context.participants.map((participant) => [participant.userId, participant])
   );
-  const amount = Number(parsed.amount);
-  const description =
-    typeof parsed.description === "string" ? parsed.description.trim() : "";
+  const amount = normalizePossiblyExpressionNumber(parsed.amount);
+  const description = normalizeExpenseDescription(parsed.description);
 
   if (!description) {
     return { success: false, reply: "I could not find an expense description." };
